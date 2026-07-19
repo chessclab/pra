@@ -1,0 +1,10 @@
+{"timestamp":"2026-07-10T10:00:00Z","type":"session_meta","payload":{"id":"real-session-id","cwd":"C:\\Users\\alice\\work\\closed-project"}}
+{"timestamp":"2026-07-10T10:01:00Z","type":"response_item","payload":{"id":"message-id-one","type":"message","role":"user","content":[{"type":"input_text","text":"Fix C:\\Users\\alice\\work\\closed-project\\auth.py for alice@example.com token sk-proj-abcdefghijklmnopqrstuvwxyz and verify with tests."}],"pastedContents":"CANARY_PASTED_PRIVATE_SOURCE"}}
+{"timestamp":"2026-07-10T10:01:00.001Z","type":"event_msg","payload":{"id":"event-id-one","client_id":"synthetic-client","type":"user_message","message":"Fix authentication and verify with tests."}}
+{"timestamp":"2026-07-10T10:02:00Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"CANARY_ASSISTANT_PRIVATE_OUTPUT"}]}}
+{"timestamp":"2026-07-10T10:03:00Z","type":"event_msg","payload":{"client_id":"synthetic-client","type":"user_message","message":"Нет, это неверно. Сначала запусти тесты и не меняй API. ```CANARY_CODE_BLOCK```"}}
+{"timestamp":"2026-07-10T10:04:00Z","type":"event_msg","payload":{"client_id":"synthetic-client","type":"user_message","message":"Переделай вместо этого."}}
+{"timestamp":"2026-07-10T10:05:00Z","type":"event_msg","payload":{"type":"user_message","message":"давай\n<environment_context>wrong works test must fix C:\\Users\\alice\\private</environment_context>"}}
+{"timestamp":"2026-07-10T10:06:00Z","type":"event_msg","payload":{"client_id":"synthetic-client","type":"user_message","message":"давай\n<environment_context>wrong works test must fix C:\\Users\\alice\\private</environment_context>"}}
+{"session_id":"history-session","ts":1783677960,"text":"Добавь проверку сборки, но не меняй публичный API."}
+{"timestamp":"2025-01-01T00:00:00Z","type":"event_msg","payload":{"type":"user_message","message":"CANARY_OUTSIDE_PERIOD"}}
