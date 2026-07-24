@@ -7,6 +7,8 @@ description: Create a privacy-first local retrospective of Codex / Claude Code s
 
 Generate a local, evidence-backed review from sanitized metadata. Keep raw JSONL outside model context. Supports both Codex Desktop (`~/.codex/`) and Claude Code CLI (`~/.claude/`) history formats.
 
+The tool retains only timestamp, anonymous session id, role, kind, boolean has_tool_calls, and aggregate metrics. Assistant text, thinking, tool name, tool input, tool output, and user text are never saved to the report or model context.
+
 ## Safety boundary
 
 - Require an explicit period (`--days` or `--since`) on every run.
@@ -45,7 +47,6 @@ Generate a local, evidence-backed review from sanitized metadata. Keep raw JSONL
 
 ## Output
 
-Save Markdown and machine-readable JSON locally under `~/.codex-retrospective/reports` unless `--output-dir` is explicitly supplied. Compare the current metrics with a compatible previous report (same provider, source mode, and exact period duration; schema v3). Explicit custom sources are not auto-compared.
+Save Markdown and machine-readable JSON locally under `~/.codex-retrospective/reports` unless `--output-dir` is explicitly supplied. Compare the current metrics with a compatible previous report (same provider, source mode, and exact period duration; schema v4). Explicit custom sources are not auto-compared.
 
 Use `references/report-template.md` when changing report sections or evidence requirements.
-

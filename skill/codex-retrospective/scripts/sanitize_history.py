@@ -66,9 +66,13 @@ SECRET_PATTERNS = (
 )
 
 CORRECTION_RE = re.compile(
-    r"(?i)(?:\bno\b|\bwrong\b|\binstead\b|\brevert\b|неверно|не так|нет[,!]|исправ|вместо|отмени|передел)"
+    r"(?i)(?:\bno[,!.;?]|\bwrong\b|\binstead\b|\brevert\b|неверно|не так|нет[,!]|исправ|вместо|отмени|передел)"
 )
-SUCCESS_RE = re.compile(r"(?i)(?:\bworks\b|\bperfect\b|\bgreat\b|готово|работает|идеально|отлично|спасибо)")
+SUCCESS_RE = re.compile(
+    r"(?i)(?:\bworks\b|\bperfect\b|\bgreat\b|"
+    r"(?<!не )готово|(?<!не )работает|(?<!не )идеально|(?<!не )отлично|"
+    r"спасибо)"
+)
 VERIFY_RE = re.compile(r"(?i)(?:\btest|verify|check|lint|build\b|тест|проверь|провер|сборк|линт)")
 CONSTRAINT_RE = re.compile(r"(?i)(?:\bmust\b|\bwithout\b|\bonly\b|\bdo not\b|нужно|нельзя|только|без |не (?:делай|меняй|используй))")
 GOAL_RE = re.compile(r"(?i)(?:\bfix\b|\badd\b|\bcreate\b|\bimplement\b|\bupdate\b|\bremove\b|исправ|добав|созда|реализ|обнов|удал)")
@@ -80,6 +84,7 @@ class ScanStats:
     files: int = 0
     lines: int = 0
     events: int = 0
+    assistant_events: int = 0
     dropped_fields: int = 0
     invalid_json: int = 0
     outside_period: int = 0
@@ -96,6 +101,7 @@ class ScanStats:
             "files": self.files,
             "lines": self.lines,
             "events": self.events,
+            "assistant_events": self.assistant_events,
             "dropped_fields": self.dropped_fields,
             "invalid_json": self.invalid_json,
             "outside_period": self.outside_period,
@@ -488,6 +494,45 @@ def scan_sources(
                     stats.outside_period += 1
                     continue
                 role, kind = classify(obj)
+                if role == "assistant":
+                    # Write assistant events for tool ratio
+                    has_tool = False
+                    content_available = False
+                    # Claude Code: message.content[].type
+                    msg = obj.get("message") if isinstance(obj.get("message"), dict) else {}
+                    if "content" in msg:
+                        content = msg["content"]
+                        if isinstance(content, list):
+                            content_available = True
+                            for item in content:
+                                if isinstance(item, dict) and str(item.get("type", "")).lower() in ("tool_use", "tool_call"):
+                                    has_tool = True
+                                    break
+                    # Codex: payload.content[].type
+                    if not has_tool:
+                        payload = obj.get("payload") if isinstance(obj.get("payload"), dict) else {}
+                        if "content" in payload:
+                            payload_content = payload["content"]
+                            if isinstance(payload_content, list):
+                                content_available = True
+                                for item in payload_content:
+                                    if isinstance(item, dict) and str(item.get("type", "")).lower() in ("tool_call",):
+                                        has_tool = True
+                                        break
+                    event = {
+                        "schema_version": SCHEMA_VERSION,
+                        "event_id": private_label("event", f"{source_label}:{line_number}:{timestamp.isoformat()}", salt),
+                        "timestamp": timestamp.isoformat().replace("+00:00", "Z"),
+                        "session": session_hint,
+                        "role": "assistant",
+                        "kind": kind,
+                        "has_tool_calls": has_tool,
+                        "tool_content_available": content_available,
+                        "evidence": {"mode": "metadata"},
+                    }
+                    output.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+                    stats.assistant_events += 1
+                    continue
                 if role != "user":
                     stats.skipped_non_user += 1
                     continue

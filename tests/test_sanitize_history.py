@@ -11,8 +11,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+TESTS_ROOT = Path(__file__).resolve().parent
+SKILL_ROOT = REPO_ROOT / "skill" / "codex-retrospective"
+sys.path.insert(0, str(SKILL_ROOT / "scripts"))
 
 from analyze_events import build_report_state, find_compatible_previous, load_events, render_markdown  # noqa: E402
 from sanitize_history import (  # noqa: E402
@@ -28,7 +30,7 @@ from sanitize_history import (  # noqa: E402
 
 class SanitizerTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.fixture = ROOT / "tests" / "fixtures" / "synthetic_history.jsonl"
+        self.fixture = TESTS_ROOT / "fixtures" / "synthetic_history.jsonl"
         self.since = datetime(2026, 7, 1, tzinfo=timezone.utc)
         self.until = datetime(2026, 8, 1, tzinfo=timezone.utc)
 
@@ -48,6 +50,8 @@ class SanitizerTests(unittest.TestCase):
             "CANARY_ASSISTANT_PRIVATE_OUTPUT",
             "CANARY_CODE_BLOCK",
             "CANARY_OUTSIDE_PERIOD",
+            "CANARY_TOOL_NAME",
+            "CANARY_TOOL_INPUT",
             "closed-project",
             "alice@example.com",
             "sk-proj-abcdefghijklmnopqrstuvwxyz",
@@ -56,7 +60,7 @@ class SanitizerTests(unittest.TestCase):
         )
         for value in forbidden:
             self.assertNotIn(value, combined)
-        self.assertEqual(5, len(events))
+        self.assertEqual(7, len(events))  # 5 user + 2 assistant
         self.assertEqual(2, state["metrics"]["sessions"])
         self.assertEqual(2, state["metrics"]["corrections"])
         self.assertIn("user_message", state["event_kinds"])
@@ -98,7 +102,7 @@ class SanitizerTests(unittest.TestCase):
     def test_runtime_scripts_import_no_network_clients(self) -> None:
         forbidden_roots = {"socket", "urllib", "http", "requests", "httpx", "aiohttp"}
         found: set[str] = set()
-        for script in (ROOT / "scripts").glob("*.py"):
+        for script in (SKILL_ROOT / "scripts").glob("*.py"):
             tree = ast.parse(script.read_text(encoding="utf-8"), filename=str(script))
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
@@ -117,7 +121,7 @@ class ClaudeCodeTests(unittest.TestCase):
     """Tests for Claude Code and Codex Desktop display format support."""
 
     def setUp(self) -> None:
-        self.fixture = ROOT / "tests" / "fixtures" / "claude_code_history.jsonl"
+        self.fixture = TESTS_ROOT / "fixtures" / "claude_code_history.jsonl"
         self.since = datetime(2026, 7, 15, tzinfo=timezone.utc)
         self.until = datetime(2026, 8, 1, tzinfo=timezone.utc)
 
@@ -210,15 +214,16 @@ class ClaudeCodeTests(unittest.TestCase):
                 stats = scan_sources([self.fixture], self.since, self.until, output, b"test-salt")
             events = load_events(events_path)
 
-        # 4 user events: 2 display-format + 2 structured-format (string + text block)
-        self.assertEqual(4, len(events))
+        # 4 user events + 2 assistant events = 6
+        self.assertEqual(6, len(events))
         self.assertEqual(4, stats.events)
+        self.assertEqual(2, stats.assistant_events)
         # 2 sessions: display-session-001 + structured-session-001
         sessions = {e.get("session") for e in events}
         self.assertEqual(2, len(sessions))
 
-        # skipped: assistant + progress = 2
-        self.assertEqual(2, stats.skipped_non_user)
+        # skipped: progress = 1 (assistant no longer skipped)
+        self.assertEqual(1, stats.skipped_non_user)
         # internal userType skip: 1
         self.assertEqual(1, stats.internal_user_events)
         # tool_result-only content → no user text, silently skipped (no counter)
@@ -252,6 +257,8 @@ class ClaudeCodeTests(unittest.TestCase):
             "CANARY_PASTED_DISPLAY",
             "CANARY_TOOL_RESULTS",
             "CANARY_ASSISTANT_THINKING",
+            "CANARY_TOOL_NAME",
+            "CANARY_TOOL_INPUT",
         )
         for value in canaries:
             self.assertNotIn(value, combined)
@@ -317,7 +324,7 @@ class ProviderScopeTests(unittest.TestCase):
 
     # ── scope-based previous report matching ────────────────────────────────
 
-    def _write_report(self, directory: Path, filename: str, scope: dict, prompts: int = 10, schema_version: int = 3) -> Path:
+    def _write_report(self, directory: Path, filename: str, scope: dict, prompts: int = 10, schema_version: int = 4) -> Path:
         data = {"schema_version": schema_version, "scope": scope, "metrics": {"prompts": prompts}}
         path = directory / filename
         path.write_text(json.dumps(data), encoding="utf-8")
@@ -383,7 +390,7 @@ class ProviderScopeTests(unittest.TestCase):
     # ── schema-version incompatibility ───────────────────────────────────
 
     def test_schema_version_incompatible(self) -> None:
-        """Schema v2 and v3 are incompatible."""
+        """Schema v2 and v4 are incompatible (v3 reports are readable but not auto-compared)."""
         scope = {"provider": "all", "source_mode": "auto", "period_duration_seconds": 604800}
         with tempfile.TemporaryDirectory() as temporary:
             output_dir = Path(temporary)
@@ -415,10 +422,10 @@ class ProviderScopeTests(unittest.TestCase):
     def test_provider_source_mutual_exclusion(self) -> None:
         """--provider and --source together should exit with error."""
         result = subprocess.run(
-            [sys.executable, str(ROOT / "scripts" / "review.py"),
-             "--provider", "codex", "--source", str(ROOT / "tests" / "fixtures" / "synthetic_history.jsonl"),
+            [sys.executable, str(SKILL_ROOT / "scripts" / "review.py"),
+             "--provider", "codex", "--source", str(TESTS_ROOT / "fixtures" / "synthetic_history.jsonl"),
              "--days", "7"],
-            capture_output=True, text=True, cwd=str(ROOT)
+            capture_output=True, text=True, cwd=str(REPO_ROOT)
         )
         self.assertEqual(2, result.returncode)
         self.assertIn("mutually exclusive", result.stderr)
@@ -426,10 +433,10 @@ class ProviderScopeTests(unittest.TestCase):
     def test_explicit_source_is_custom(self) -> None:
         """--source should result in provider=custom in dry-run output."""
         result = subprocess.run(
-            [sys.executable, str(ROOT / "scripts" / "review.py"),
-             "--source", str(ROOT / "tests" / "fixtures" / "synthetic_history.jsonl"),
+            [sys.executable, str(SKILL_ROOT / "scripts" / "review.py"),
+             "--source", str(TESTS_ROOT / "fixtures" / "synthetic_history.jsonl"),
              "--days", "7", "--dry-run"],
-            capture_output=True, text=True, cwd=str(ROOT)
+            capture_output=True, text=True, cwd=str(REPO_ROOT)
         )
         self.assertEqual(0, result.returncode)
         self.assertIn("provider: custom", result.stdout)
@@ -441,19 +448,19 @@ class ProviderScopeTests(unittest.TestCase):
             output_dir = Path(temporary)
             # Run 1: synthetic_history
             subprocess.run(
-                [sys.executable, str(ROOT / "scripts" / "review.py"),
-                 "--source", str(ROOT / "tests" / "fixtures" / "synthetic_history.jsonl"),
+                [sys.executable, str(SKILL_ROOT / "scripts" / "review.py"),
+                 "--source", str(TESTS_ROOT / "fixtures" / "synthetic_history.jsonl"),
                  "--since", "2026-07-01", "--until", "2026-08-01",
                  "--output-dir", str(output_dir)],
-                capture_output=True, text=True, cwd=str(ROOT), check=False
+                capture_output=True, text=True, cwd=str(REPO_ROOT), check=False
             )
             # Run 2: claude_code_history (different source, same period)
             subprocess.run(
-                [sys.executable, str(ROOT / "scripts" / "review.py"),
-                 "--source", str(ROOT / "tests" / "fixtures" / "claude_code_history.jsonl"),
+                [sys.executable, str(SKILL_ROOT / "scripts" / "review.py"),
+                 "--source", str(TESTS_ROOT / "fixtures" / "claude_code_history.jsonl"),
                  "--since", "2026-07-01", "--until", "2026-08-01",
                  "--output-dir", str(output_dir)],
-                capture_output=True, text=True, cwd=str(ROOT), check=False
+                capture_output=True, text=True, cwd=str(REPO_ROOT), check=False
             )
             jsons = sorted(output_dir.glob("retrospective-*.json"), reverse=True)
             self.assertGreaterEqual(len(jsons), 1)
@@ -464,11 +471,24 @@ class ProviderScopeTests(unittest.TestCase):
     def test_schema_probe_requires_provider(self) -> None:
         """schema_probe.py should error without --provider."""
         result = subprocess.run(
-            [sys.executable, str(ROOT / "scripts" / "schema_probe.py"), "--days", "7"],
-            capture_output=True, text=True, cwd=str(ROOT)
+            [sys.executable, str(SKILL_ROOT / "scripts" / "schema_probe.py"), "--days", "7"],
+            capture_output=True, text=True, cwd=str(REPO_ROOT)
         )
         self.assertEqual(2, result.returncode)
         self.assertIn("required", result.stderr)
+
+
+class VersionTest(unittest.TestCase):
+    """TOOL_VERSION and --version flag."""
+
+    def test_version_flag(self) -> None:
+        """--version should print version and exit with code 0."""
+        result = subprocess.run(
+            [sys.executable, str(SKILL_ROOT / "scripts" / "review.py"), "--version"],
+            capture_output=True, text=True, cwd=str(REPO_ROOT)
+        )
+        self.assertEqual(0, result.returncode)
+        self.assertIn("0.1.0-beta.1", result.stdout)
 
 
 if __name__ == "__main__":

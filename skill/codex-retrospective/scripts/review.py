@@ -13,6 +13,8 @@ from pathlib import Path
 from analyze_events import build_report_state, find_compatible_previous, load_events, render_markdown
 from sanitize_history import PROVIDER_CHOICES, count_source_files, discover_sources, expand_sources, scan_sources
 
+TOOL_VERSION = "0.1.0-beta.1"
+
 
 def _date_start(value: str) -> datetime:
     try:
@@ -37,6 +39,7 @@ def _period(args: argparse.Namespace) -> tuple[datetime, datetime]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", action="version", version=f"%(prog)s {TOOL_VERSION}")
     period = parser.add_mutually_exclusive_group(required=True)
     period.add_argument("--days", type=int)
     period.add_argument("--since", type=_date_start)

@@ -1,0 +1,17 @@
+# Normalize line endings
+* text=auto
+
+# Python
+*.py text diff=python
+
+# Markdown
+*.md text
+
+# YAML
+*.yaml text
+
+# Shell scripts
+*.sh text eol=lf
+
+# JSONL is text
+*.jsonl text
