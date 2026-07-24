@@ -1,9 +1,9 @@
 ---
-name: codex-retrospective
-description: Create a privacy-first local retrospective of Codex / Claude Code session history for a user-selected period. Use only when the user explicitly invokes $codex-retrospective and asks to analyze work patterns, recurring corrections, prompt quality, verification habits, or weekly progress without exposing pasted content, secrets, source code, project identities, or local paths.
+name: pra
+description: Create a privacy-first local retrospective of Codex / Claude Code session history for a user-selected period. Use only when the user explicitly invokes $pra and asks to analyze work patterns, recurring corrections, prompt quality, verification habits, or weekly progress without exposing pasted content, secrets, source code, project identities, or local paths.
 ---
 
-# Codex Retrospective (Claude Code / Codex)
+# PRA — Private Retrospective Analysis (Claude Code / Codex)
 
 Generate a local, evidence-backed review from sanitized metadata. Keep raw JSONL outside model context. Supports both Codex Desktop (`~/.codex/`) and Claude Code CLI (`~/.claude/`) history formats.
 
@@ -47,6 +47,6 @@ The tool retains only timestamp, anonymous session id, role, kind, boolean has_t
 
 ## Output
 
-Save Markdown and machine-readable JSON locally under `~/.codex-retrospective/reports` unless `--output-dir` is explicitly supplied. Compare the current metrics with a compatible previous report (same provider, source mode, and exact period duration; schema v4). Explicit custom sources are not auto-compared.
+Save Markdown and machine-readable JSON locally under `~/.pra/reports` unless `--output-dir` is explicitly supplied. Compare the current metrics with a compatible previous report (same provider, source mode, and exact period duration; schema v4). Explicit custom sources are not auto-compared.
 
 Use `references/report-template.md` when changing report sections or evidence requirements.

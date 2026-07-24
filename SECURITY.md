@@ -2,7 +2,7 @@
 
 ## Scope
 
-Codex Retrospective is a **local-only, privacy-first** analysis tool. It:
+PRA is a **local-only, privacy-first** analysis tool. It:
 
 - Reads JSONL history files **only from the local filesystem** (no network input).
 - **Never sends data** over the network — no telemetry, no analytics, no external API calls.
@@ -77,7 +77,7 @@ If you discover a security-relevant bug — especially a bypass of the privacy b
 
 **Do not** file a public GitHub issue for a privacy bypass. Instead:
 
-1. **Contact**: Start a [Security Advisory](https://github.com/chessclab/codex-retrospective/security/advisories) on GitHub.
+1. **Contact**: Start a [Security Advisory](https://github.com/chessclab/pra/security/advisories) on GitHub.
 2. **Include**: a minimal reproduction case (JSONL fixture) and the version or commit where the issue exists.
 3. **Response**: We aim to acknowledge receipt within 48 hours and provide an initial assessment within 5 business days.
 
@@ -100,4 +100,4 @@ There are no numbered releases — the project is in beta. Bug and security fixe
 - **`--dry-run`** previews file counts only, never reading session contents.
 - **The `--source` flag** allows analysis of any JSONL file the user explicitly provides — the user is responsible for the contents of that file.
 
-See [`references/privacy-model.md`](skill/codex-retrospective/references/privacy-model.md) for the full privacy contract and data flow description.
+See [`references/privacy-model.md`](skill/pra/references/privacy-model.md) for the full privacy contract and data flow description.

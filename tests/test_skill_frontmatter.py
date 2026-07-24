@@ -1,11 +1,11 @@
-"""Frontmatter and structure validation for the codex-retrospective skill."""
+"""Frontmatter and structure validation for the PRA skill."""
 
 import pathlib
 import unittest
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent
-SKILL_DIR = REPO_ROOT / "skill" / "codex-retrospective"
+SKILL_DIR = REPO_ROOT / "skill" / "pra"
 
 
 class SkillFrontmatterTest(unittest.TestCase):
@@ -33,10 +33,10 @@ class SkillFrontmatterTest(unittest.TestCase):
                 meta[key] = value
         return meta
 
-    def test_name_is_codex_retrospective(self) -> None:
+    def test_name_is_pra(self) -> None:
         """Frontmatter name must match the skill directory name."""
         meta = self._load_frontmatter()
-        self.assertEqual("codex-retrospective", meta.get("name"))
+        self.assertEqual("pra", meta.get("name"))
 
     def test_description_is_non_empty(self) -> None:
         """Frontmatter must have a non-empty description."""

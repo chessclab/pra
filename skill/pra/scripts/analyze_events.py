@@ -496,7 +496,7 @@ def render_markdown(state: dict[str, Any]) -> str:
     duration_days = period_duration_seconds / 86400 if period_duration_seconds else 0
 
     lines = [
-        "# Codex Retrospective (Codex + Claude Code)",
+        "# PRA — Private Retrospective Analysis (Codex + Claude Code)",
         "",
         f"Период: `{period['since']}` — `{period['until']}`",
         f"Источник: {provider_label} · режим: {source_mode_label} · "

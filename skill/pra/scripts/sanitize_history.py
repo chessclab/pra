@@ -610,7 +610,7 @@ def main() -> int:
     parser.add_argument("--since", type=_parse_cli_date, required=True)
     parser.add_argument("--until", type=_parse_cli_date, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--salt", default="codex-retrospective-local-v1")
+    parser.add_argument("--salt", default="pra-local-v1")
     args = parser.parse_args()
     if args.until <= args.since:
         parser.error("--until must be later than --since")

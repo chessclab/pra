@@ -1,4 +1,4 @@
-# Codex Retrospective
+# PRA — Private Retrospective Analysis
 
 > **Beta** — This project is in active development. APIs, report schema, and workflows may change without notice.
 
@@ -24,7 +24,7 @@ The environment variables `CODEX_HOME` and `CLAUDE_HOME` replace the default pat
 5. **Aggregation** computes counts, durations, and patterns from the remaining metadata only.
 6. A **Markdown report** is written to disk. The intermediate sanitised dataset is temporary and deleted after the report is saved.
 
-No external services, no telemetry, no network access during analysis. See [`references/privacy-model.md`](skill/codex-retrospective/references/privacy-model.md) for the detailed privacy contract.
+No external services, no telemetry, no network access during analysis. See [`references/privacy-model.md`](skill/pra/references/privacy-model.md) for the detailed privacy contract.
 
 ## Prerequisites
 
@@ -36,20 +36,20 @@ No external services, no telemetry, no network access during analysis. See [`ref
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/chessclab/codex-retrospective.git
-cd codex-retrospective
+git clone https://github.com/chessclab/pra.git
+cd pra
 
-# 2. Create a directory for reports (default: ~/.codex-retrospective/reports)
-mkdir -p ~/.codex-retrospective/reports
+# 2. Create a directory for reports (default: ~/.pra/reports)
+mkdir -p ~/.pra/reports
 
 # 3. (Optional) Install as a skill
-#    Codex Desktop: copy or symlink skill/codex-retrospective into ~/.codex/skills/
-#    Claude Code CLI: copy or symlink skill/codex-retrospective into ~/.claude/skills/
+#    Codex Desktop: copy or symlink skill/pra into ~/.codex/skills/
+#    Claude Code CLI: copy or symlink skill/pra into ~/.claude/skills/
 #    On Windows (cmd, administrator):
-#      mklink /D "%USERPROFILE%\.claude\skills\codex-retrospective" "%CD%\skill\codex-retrospective"
+#      mklink /D "%USERPROFILE%\.claude\skills\pra" "%CD%\skill\pra"
 #    On Linux / macOS:
-#      ln -s "$PWD/skill/codex-retrospective" ~/.claude/skills/codex-retrospective
-#    Then invoke with $codex-retrospective inside the assistant.
+#      ln -s "$PWD/skill/pra" ~/.claude/skills/pra
+#    Then invoke with $pra inside the assistant.
 ```
 
 Replace `chessclab` with your GitHub username or organisation before publishing.
@@ -59,19 +59,19 @@ Replace `chessclab` with your GitHub username or organisation before publishing.
 Preview what files would be analysed without generating a report:
 
 ```bash
-python skill/codex-retrospective/scripts/review.py --provider all --days 7 --dry-run
+python skill/pra/scripts/review.py --provider all --days 7 --dry-run
 ```
 
 Run a full retrospective for the last 7 days:
 
 ```bash
-python skill/codex-retrospective/scripts/review.py --provider all --days 7
+python skill/pra/scripts/review.py --provider all --days 7
 ```
 
 Analyse a specific JSONL file directly:
 
 ```bash
-python skill/codex-retrospective/scripts/review.py --source ./exported_history.jsonl --days 30
+python skill/pra/scripts/review.py --source ./exported_history.jsonl --days 30
 ```
 
 ## Examples
@@ -79,25 +79,25 @@ python skill/codex-retrospective/scripts/review.py --source ./exported_history.j
 Analyse only Claude Code CLI history for last 3 days:
 
 ```bash
-python skill/codex-retrospective/scripts/review.py --provider claude --days 3
+python skill/pra/scripts/review.py --provider claude --days 3
 ```
 
 Specify an exact date range:
 
 ```bash
-python skill/codex-retrospective/scripts/review.py --provider codex --since 2026-06-01 --until 2026-07-01
+python skill/pra/scripts/review.py --provider codex --since 2026-06-01 --until 2026-07-01
 ```
 
 Write output to a custom directory:
 
 ```bash
-python skill/codex-retrospective/scripts/review.py --provider all --days 7 --output-dir ./my-reports
+python skill/pra/scripts/review.py --provider all --days 7 --output-dir ./my-reports
 ```
 
 ## Anonymised report fragment
 
 ```markdown
-# Codex Retrospective (Codex + Claude Code)
+# PRA — Private Retrospective Analysis (Codex + Claude Code)
 
 Период: `2026-07-09T00:00:00+00:00` — `2026-07-20T00:00:00+00:00`
 Источник: custom · режим: explicit · длительность: 11 дн. (950400 с)

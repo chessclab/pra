@@ -1,0 +1,8 @@
+interface:
+  display_name: "PRA"
+  short_description: "Private local review of Codex and Claude Code work sessions"
+  default_prompt: "Use $pra to review my Codex/Claude Code sessions for a period and provider I explicitly choose."
+
+policy:
+  allow_implicit_invocation: false
+

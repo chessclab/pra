@@ -13,7 +13,7 @@ from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TESTS_ROOT = Path(__file__).resolve().parent
-SKILL_ROOT = REPO_ROOT / "skill" / "codex-retrospective"
+SKILL_ROOT = REPO_ROOT / "skill" / "pra"
 sys.path.insert(0, str(SKILL_ROOT / "scripts"))
 
 from analyze_events import build_report_state, find_compatible_previous, load_events, render_markdown  # noqa: E402

@@ -46,7 +46,7 @@ def main() -> int:
     parser.add_argument("--until", type=_date_start)
     parser.add_argument("--provider", choices=PROVIDER_CHOICES, help="Auto-discover sources (mutually exclusive with --source)")
     parser.add_argument("--source", action="append", type=Path, help="Explicit JSONL file(s) (mutually exclusive with --provider)")
-    parser.add_argument("--output-dir", type=Path, default=Path.home() / ".codex-retrospective" / "reports")
+    parser.add_argument("--output-dir", type=Path, default=Path.home() / ".pra" / "reports")
     parser.add_argument("--dry-run", action="store_true", help="Discover files without reading their contents")
     args = parser.parse_args()
 
@@ -112,7 +112,7 @@ def main() -> int:
     else:
         previous = find_compatible_previous(output_dir, scope_dict)
 
-    with tempfile.TemporaryDirectory(prefix="codex-retrospective-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="pra-") as temporary:
         events_path = Path(temporary) / "events.jsonl"
         salt = secrets.token_bytes(32)
         with events_path.open("w", encoding="utf-8", newline="\n") as output:

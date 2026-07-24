@@ -1,4 +1,4 @@
-# Codex Retrospective
+# PRA — Private Retrospective Analysis
 
 > **Бета-версия** — проект находится в активной разработке. API, схема отчётов и workflows могут меняться без уведомления.
 
@@ -24,7 +24,7 @@
 5. **Агрегация** вычисляет количество, длительность и паттерны из оставшихся метаданных.
 6. **Markdown-отчёт** записывается на диск. Промежуточный обезличенный набор данных временный и удаляется после сохранения отчёта.
 
-Никаких внешних сервисов, телеметрии или сетевых запросов во время анализа. Подробное описание приватности см. в [`references/privacy-model.md`](skill/codex-retrospective/references/privacy-model.md).
+Никаких внешних сервисов, телеметрии или сетевых запросов во время анализа. Подробное описание приватности см. в [`references/privacy-model.md`](skill/pra/references/privacy-model.md).
 
 ## Требования
 
@@ -36,20 +36,20 @@
 
 ```bash
 # 1. Клонировать репозиторий
-git clone https://github.com/chessclab/codex-retrospective.git
-cd codex-retrospective
+git clone https://github.com/chessclab/pra.git
+cd pra
 
-# 2. Создать директорию для отчётов (по умолчанию: ~/.codex-retrospective/reports)
-mkdir -p ~/.codex-retrospective/reports
+# 2. Создать директорию для отчётов (по умолчанию: ~/.pra/reports)
+mkdir -p ~/.pra/reports
 
 # 3. (Опционально) Установить как навык
-#    Codex Desktop: скопировать или создать симлинк skill/codex-retrospective в ~/.codex/skills/
-#    Claude Code CLI: скопировать или создать симлинк skill/codex-retrospective в ~/.claude/skills/
+#    Codex Desktop: скопировать или создать симлинк skill/pra в ~/.codex/skills/
+#    Claude Code CLI: скопировать или создать симлинк skill/pra в ~/.claude/skills/
 #    На Windows (cmd, от администратора):
-#      mklink /D "%USERPROFILE%\.claude\skills\codex-retrospective" "%CD%\skill\codex-retrospective"
+#      mklink /D "%USERPROFILE%\.claude\skills\pra" "%CD%\skill\pra"
 #    На Linux / macOS:
-#      ln -s "$PWD/skill/codex-retrospective" ~/.claude/skills/codex-retrospective
-#    Затем вызвать $codex-retrospective внутри ассистента.
+#      ln -s "$PWD/skill/pra" ~/.claude/skills/pra
+#    Затем вызвать $pra внутри ассистента.
 ```
 
 Замените `chessclab` на имя пользователя GitHub перед публикацией.
@@ -59,19 +59,19 @@ mkdir -p ~/.codex-retrospective/reports
 Просмотреть, какие файлы будут проанализированы, без генерации отчёта:
 
 ```bash
-python skill/codex-retrospective/scripts/review.py --provider all --days 7 --dry-run
+python skill/pra/scripts/review.py --provider all --days 7 --dry-run
 ```
 
 Запустить полную ретроспективу за последние 7 дней:
 
 ```bash
-python skill/codex-retrospective/scripts/review.py --provider all --days 7
+python skill/pra/scripts/review.py --provider all --days 7
 ```
 
 Проанализировать конкретный JSONL-файл напрямую:
 
 ```bash
-python skill/codex-retrospective/scripts/review.py --source ./exported_history.jsonl --days 30
+python skill/pra/scripts/review.py --source ./exported_history.jsonl --days 30
 ```
 
 ## Примеры
@@ -79,19 +79,19 @@ python skill/codex-retrospective/scripts/review.py --source ./exported_history.j
 Проанализировать только Claude Code CLI за последние 3 дня:
 
 ```bash
-python skill/codex-retrospective/scripts/review.py --provider claude --days 3
+python skill/pra/scripts/review.py --provider claude --days 3
 ```
 
 Указать точный диапазон дат:
 
 ```bash
-python skill/codex-retrospective/scripts/review.py --provider codex --since 2026-06-01 --until 2026-07-01
+python skill/pra/scripts/review.py --provider codex --since 2026-06-01 --until 2026-07-01
 ```
 
 Сохранить отчёт в произвольную директорию:
 
 ```bash
-python skill/codex-retrospective/scripts/review.py --provider all --days 7 --output-dir ./my-reports
+python skill/pra/scripts/review.py --provider all --days 7 --output-dir ./my-reports
 ```
 
 ## Тестирование
