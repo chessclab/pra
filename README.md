@@ -52,8 +52,6 @@ mkdir -p ~/.pra/reports
 #    Then invoke with $pra inside the assistant.
 ```
 
-Replace `chessclab` with your GitHub username or organisation before publishing.
-
 ## Quick start
 
 Preview what files would be analysed without generating a report:
