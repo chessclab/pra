@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -348,7 +349,135 @@ def is_high_risk_content(cleaned_text: str, redactions: int) -> bool:
     return compact_length >= 800 and redactions >= 10
 
 
-PROVIDER_CHOICES = ("codex", "claude", "all")
+PROVIDER_CHOICES = ("codex", "claude", "hermes", "all")
+
+
+def _hermes_home() -> Path:
+    return Path(os.environ.get("HERMES_HOME", str(Path.home() / ".hermes"))).expanduser().resolve()
+
+
+def _hermes_db_path() -> Path:
+    return _hermes_home() / "state.db"
+
+
+def _merge_stats(target: ScanStats, source: ScanStats) -> None:
+    for field_name in (
+        "files", "lines", "events", "assistant_events", "dropped_fields", "invalid_json",
+        "outside_period", "undated", "skipped_non_user", "duplicate_events",
+        "empty_after_sanitization", "high_risk_events", "internal_user_events",
+    ):
+        setattr(target, field_name, getattr(target, field_name) + getattr(source, field_name))
+    target.source_labels.extend(source.source_labels)
+
+
+def _hermes_text(value: Any) -> list[str]:
+    """Extract metric input from Hermes content without retaining the raw value."""
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return [value]
+        if parsed != value:
+            return _hermes_text(parsed)
+        return [value]
+    if isinstance(value, list):
+        parts: list[str] = []
+        for item in value:
+            parts.extend(_hermes_text(item))
+        return parts
+    if isinstance(value, dict):
+        parts: list[str] = []
+        for key in ("text", "content", "message", "input"):
+            if key in value:
+                parts.extend(_hermes_text(value[key]))
+        return parts
+    return []
+
+
+def scan_hermes_database(
+    source: Path,
+    since: datetime,
+    until: datetime,
+    output: TextIO,
+    salt: bytes,
+) -> ScanStats:
+    """Read Hermes state.db and emit only anonymous metadata events."""
+    stats = ScanStats(files=1)
+    source_label = private_label("source", str(source), salt)
+    stats.source_labels.append(source_label)
+    session_projects: dict[str, str] = {}
+    try:
+        connection = sqlite3.connect(f"file:{source.as_posix()}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return stats
+    try:
+        for session_id, cwd in connection.execute("SELECT id, cwd FROM sessions"):
+            if session_id and cwd:
+                session_projects[str(session_id)] = private_label("project", str(cwd), salt)
+        rows = connection.execute(
+            "SELECT id, session_id, role, content, tool_calls, timestamp, display_kind "
+            "FROM messages ORDER BY timestamp, id"
+        )
+        for message_id, raw_session, role, content, tool_calls, raw_timestamp, display_kind in rows:
+            stats.lines += 1
+            timestamp = parse_timestamp(raw_timestamp)
+            if timestamp is None:
+                stats.undated += 1
+                continue
+            if timestamp < since or timestamp >= until:
+                stats.outside_period += 1
+                continue
+            session_value = str(raw_session or "unknown")
+            session_hint = private_label("session", session_value, salt)
+            kind = str(display_kind or role or "unknown")
+            event_seed = f"{source_label}:{message_id}:{timestamp.isoformat()}"
+            if str(role or "").lower() in {"assistant", "tool"}:
+                event = {
+                    "schema_version": SCHEMA_VERSION,
+                    "event_id": private_label("event", event_seed, salt),
+                    "timestamp": timestamp.isoformat().replace("+00:00", "Z"),
+                    "session": session_hint,
+                    "role": "assistant",
+                    "kind": kind,
+                    "has_tool_calls": bool(tool_calls) or str(role).lower() == "tool",
+                    "tool_content_available": bool(content) or bool(tool_calls),
+                    "evidence": {"mode": "metadata", "provider": "hermes"},
+                }
+                output.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+                stats.assistant_events += 1
+                continue
+            if str(role or "").lower() != "user":
+                stats.skipped_non_user += 1
+                continue
+            text_parts = _hermes_text(content)
+            raw_text = "\n".join(part for part in text_parts if part)
+            if not raw_text:
+                continue
+            cleaned_text, cleaning_redactions = sanitize_for_metrics(raw_text)
+            if not cleaned_text.strip():
+                stats.empty_after_sanitization += 1
+                continue
+            if is_high_risk_content(cleaned_text, cleaning_redactions):
+                stats.high_risk_events += 1
+                continue
+            metrics, signals, evidence_summary = derive_metrics(raw_text, 0, len(text_parts))
+            event = {
+                "schema_version": SCHEMA_VERSION,
+                "event_id": private_label("event", event_seed, salt),
+                "timestamp": timestamp.isoformat().replace("+00:00", "Z"),
+                "session": session_hint,
+                "project": session_projects.get(session_value, "project-unknown"),
+                "role": "user",
+                "kind": kind,
+                "metrics": metrics,
+                "signals": signals,
+                "evidence": {"mode": "metadata", "provider": "hermes", "summary": evidence_summary},
+            }
+            output.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+            stats.events += 1
+    finally:
+        connection.close()
+    return stats
 
 
 def _provider_root(provider_key: str) -> Path | None:
@@ -413,6 +542,10 @@ def discover_sources(provider: str = "all") -> list[Path]:
         if not root.is_dir():
             continue
         candidates.extend(_find_jsonl_files(root))
+    if provider in ("hermes", "all"):
+        hermes_db = _hermes_db_path()
+        if hermes_db.is_file():
+            candidates.append(hermes_db)
     return sorted(set(candidates))
 
 
@@ -430,6 +563,8 @@ def count_source_files(provider: str) -> dict[str, int]:
             files = _find_jsonl_files(root)
             if files:
                 counts[label] = len(files)
+    if provider in ("hermes", "all") and _hermes_db_path().is_file():
+        counts["Hermes"] = 1
     return counts
 
 
@@ -454,6 +589,10 @@ def scan_sources(
     stats = ScanStats()
     accepted_events: dict[tuple[str, str], tuple[int, dict[str, Any]]] = {}
     for source in sources:
+        if source.name == "state.db":
+            hermes_stats = scan_hermes_database(source, since, until, output, salt)
+            _merge_stats(stats, hermes_stats)
+            continue
         source_label = private_label("source", str(source), salt)
         stats.source_labels.append(source_label)
         stats.files += 1

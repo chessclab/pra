@@ -2,9 +2,9 @@
 
 ## Data flow
 
-`Codex JSONL / Claude Code JSONL → local parser → anonymous event metadata → local Markdown/JSON report`
+`Codex JSONL / Claude Code JSONL / Hermes SQLite → local parser → anonymous event metadata → local Markdown/JSON report`
 
-The model may read the final Markdown report. It must never read the source JSONL or the temporary event file.
+The model may read the final Markdown report. It must never read source JSONL/SQLite content or the temporary event file.
 
 ### Supported sources
 

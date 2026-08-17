@@ -613,7 +613,7 @@ def render_markdown(state: dict[str, Any]) -> str:
             "| Показатель | Значение |",
             "|---|---:|",
             f"| Файлы | {scan.get('files', 0)} |",
-            f"| JSONL-записи | {scan.get('lines', 0)} |",
+            f"| Записи источника | {scan.get('lines', 0)} |",
             f"| Вне периода | {scan.get('outside_period', 0)} |",
             f"| Без временной метки | {scan.get('undated', 0)} |",
             f"| Непользовательские события | {scan.get('skipped_non_user', 0)} |",

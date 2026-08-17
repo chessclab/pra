@@ -2,7 +2,7 @@
 
 > **Beta** — This project is in active development. APIs, report schema, and workflows may change without notice.
 
-Privacy-first local retrospective analysis for Codex Desktop and [Claude Code](https://claude.ai/code) CLI session history. Generates evidence-backed reports about work patterns, recurring corrections, and verification habits — **without exposing pasted content, secrets, source code, project identities, or local paths**.
+Privacy-first local retrospective analysis for Codex Desktop, [Claude Code](https://claude.ai/code) CLI, and Hermes session history. Generates evidence-backed reports about work patterns, recurring corrections, and verification habits — **without exposing pasted content, secrets, source code, project identities, or local paths**.
 
 ## Supported sources
 
@@ -11,7 +11,7 @@ Privacy-first local retrospective analysis for Codex Desktop and [Claude Code](h
 | Codex Desktop | `~/.codex/history.jsonl`, `~/.codex/sessions/*.jsonl`, `~/.codex/archived_sessions/*.jsonl` |
 | Claude Code CLI | `~/.claude/history.jsonl`, `~/.claude/projects/*/*.jsonl` |
 
-Both sources can be analysed together with `--provider all`. Custom JSONL files can be passed directly with `--source`.
+All three sources can be analysed together with `--provider all`. Hermes is read from `$HERMES_HOME/state.db` in read-only mode. Custom JSONL or SQLite files can be passed directly with `--source`.
 
 The environment variables `CODEX_HOME` and `CLAUDE_HOME` replace the default paths (they are not additive).
 
