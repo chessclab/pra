@@ -10,6 +10,7 @@ Privacy-first local retrospective analysis for Codex Desktop, [Claude Code](http
 |---|---|
 | Codex Desktop | `~/.codex/history.jsonl`, `~/.codex/sessions/*.jsonl`, `~/.codex/archived_sessions/*.jsonl` |
 | Claude Code CLI | `~/.claude/history.jsonl`, `~/.claude/projects/*/*.jsonl` |
+| Hermes | `$HERMES_HOME/state.db` (SQLite, read-only) |
 
 All three sources can be analysed together with `--provider all`. Hermes is read from `$HERMES_HOME/state.db` in read-only mode. Custom JSONL or SQLite files can be passed directly with `--source`.
 
@@ -20,7 +21,7 @@ The environment variables `CODEX_HOME` and `CLAUDE_HOME` replace the default pat
 1. **Raw JSONL** is read line by line.
 2. **`object_pairs_hook`** filters blocked field names during JSON decoding. Blocked categories: pasted content, clipboard data, file contents, binary payloads, images, base64 values.
 3. **Event classification** identifies user messages, assistant replies, tool results, and progress records.
-4. **Assistant event handling** locally decodes the content structure to detect tool calls. Only `timestamp`, `session` (hash), `role`, `kind`, `has_tool_calls` (boolean), and `tool_content_available` (boolean) are retained. Assistant text, thinking, tool name, tool input, and tool output are never saved.
+4. **Assistant event handling** locally decodes the content structure to detect tool calls. Tool arguments and results may be inspected transiently for verification and context-artifact categories, but only booleans, categories, and exit-status aggregates are retained. Assistant text, thinking, tool name, tool input, tool output, commands, file paths, and file contents are never saved.
 5. **Aggregation** computes counts, durations, and patterns from the remaining metadata only.
 6. A **Markdown report** is written to disk. The intermediate sanitised dataset is temporary and deleted after the report is saved.
 
@@ -73,6 +74,26 @@ Analyse a specific JSONL file directly:
 ```bash
 python skill/pra/scripts/review.py --source ./exported_history.jsonl --days 30
 ```
+
+## What the report measures
+
+Hermes reports currently include:
+
+- **Logical turns** — one user request grouped with the following assistant and tool activity. The report includes completion, duration, tool-call count, and verification mentions.
+- **Objective verification signals** — locally detected `test`, `lint`, `typecheck`, `build`, `diff`, and `review` actions, linked to tool-result exit status. Outcomes are `attempted`, `passed`, `failed`, or `unknown`.
+- **Context-curator signals** — metadata-only indicators for `CONTEXT.md`, `SESSION-HANDOFF.md`, `DECISIONS.md`, and resumption after a handoff.
+- **Initial prompt breakdown** — the first request in each session is checked for `goal`, `scope`, `readiness criterion`, `context/files`, and `constraints`. The report keeps the legacy 0–10 score and adds per-aspect counts.
+
+Example:
+
+```text
+logical turns: 348 (343 completed)
+verification: 63 attempted, 46 passed, 14 failed, 3 unknown
+context artifacts: CONTEXT.md 1, handoff 0, decisions 2, resume 0
+first-prompt breakdown: goal 2/19, scope 1/19, readiness 0/19, context/files 9/19, constraints 1/19
+```
+
+All command text, tool output, file paths, and artifact contents are discarded after local classification.
 
 ## Examples
 
@@ -147,6 +168,9 @@ python -B -m unittest tests.test_skill_frontmatter -v
 - **No configuration file** — all options are command-line flags.
 - **Env var overrides** — `CODEX_HOME` replaces `~/.codex`; `CLAUDE_HOME` replaces `~/.claude`. They are not additive.
 - **Behavioural metrics are approximate** — response time depends on model, tools, tests, and environment. Assistant events per user turn may not correspond one-to-one with logical replies.
+- **Replanning and user intervention are not yet observable** in the current metadata contract.
+- **Baseline → intervention → follow-up comparison is not yet implemented.**
+- **Confidence scoring is not yet attached to recommendations**; always consider sample size before acting on a signal.
 
 ## Security
 
