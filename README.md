@@ -12,7 +12,7 @@ Privacy-first local retrospective analysis for Codex Desktop, [Claude Code](http
 | Claude Code CLI | `~/.claude/history.jsonl`, `~/.claude/projects/*/*.jsonl` |
 | Hermes | `$HERMES_HOME/state.db` (SQLite, read-only) |
 
-All three sources can be analysed together with `--provider all`. Hermes is read from `$HERMES_HOME/state.db` in read-only mode. Custom JSONL or SQLite files can be passed directly with `--source`.
+All three sources can be analysed together with `--provider all`. Hermes is read from `$HERMES_HOME/state.db` in read-only mode. Custom JSONL files or directories can be passed directly with `--source`. Hermes SQLite is discovered through `--provider hermes` and is read-only.
 
 The environment variables `CODEX_HOME` and `CLAUDE_HOME` replace the default paths (they are not additive).
 
@@ -178,14 +178,14 @@ python -B -m unittest tests.test_skill_frontmatter -v
 
 - **No real-time monitoring** — the tool is designed for periodic retrospective analysis, not live dashboards.
 - **No HTML export** — reports are Markdown and JSON only.
-- **No SQLite or database storage** — each run is self-contained.
+- **No PRA-owned SQLite or database storage** — each run is self-contained; Hermes `state.db` is used only as a read-only input source.
 - **Comparison scope is strict** — reports are compared only when provider, source mode, and exact period duration all match. Schema v3 reports are readable but not auto-compared with v4. Explicit custom sources (`--source`) are never auto-compared.
 - **Codex Desktop vs Claude Code CLI** — some metadata fields differ between the two formats; cross-provider reports use the intersection of available fields.
 - **No configuration file** — all options are command-line flags.
 - **Env var overrides** — `CODEX_HOME` replaces `~/.codex`; `CLAUDE_HOME` replaces `~/.claude`. They are not additive.
 - **Behavioural metrics are approximate** — response time depends on model, tools, tests, and environment. Assistant events per user turn may not correspond one-to-one with logical replies.
 - **Replanning and user intervention are not yet observable** in the current metadata contract.
-- **Baseline → intervention → follow-up comparison is not yet implemented.**
+- **Baseline → intervention → follow-up is a separate comparison step** using `scripts/compare.py`; it does not automatically infer causality.
 - **Confidence scoring is not yet attached to recommendations**; always consider sample size before acting on a signal.
 
 ## Security
