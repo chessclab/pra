@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from verification import summarize_verification_events
+from context_artifacts import summarize_context_artifacts
 
 from logical_turns import build_logical_turns, summarize_logical_turns
 
@@ -421,9 +422,11 @@ def build_report_state(
     # ── Behaviour metrics ────────────────────────────────────────────
     logical_turn_summary = summarize_logical_turns(build_logical_turns(events))
     verification_summary = summarize_verification_events(events)
+    context_summary = summarize_context_artifacts(events)
     behaviour: dict[str, Any] = {
         "logical_turns": logical_turn_summary,
         "verification_actions": verification_summary,
+        "context_artifacts": context_summary,
         "assistant_events_per_user_turn": _compute_assistant_events_per_user_turn(events),
         "time_distribution": _compute_time_distribution(events),
         "tool_ratio": _compute_tool_ratio(events),
@@ -534,6 +537,7 @@ def render_markdown(state: dict[str, Any]) -> str:
     behaviour = state.get("behaviour", {})
     logical = behaviour.get("logical_turns", {})
     verification = behaviour.get("verification_actions", {})
+    context = behaviour.get("context_artifacts", {})
     aept = behaviour.get("assistant_events_per_user_turn", {})
     tool = behaviour.get("tool_ratio", {})
     time_dist = behaviour.get("time_distribution", {})
@@ -607,6 +611,7 @@ def render_markdown(state: dict[str, Any]) -> str:
             f"| Tool calls на logical turn | {logical.get('tool_calls_total', 0)} всего; {logical.get('tool_calls_mean', 0)} в среднем |",
             f"| Verification mentions в logical turns | {logical.get('verification_mention_count', 0)} ({logical.get('verification_mention_rate', 0)}%) |",
             f"| Реально запущенные проверки | {verification.get('attempted', 0)} (успешно: {verification.get('passed', 0)}, ошибки: {verification.get('failed', 0)}, неизвестно: {verification.get('unknown', 0)}) |",
+            f"| Context artifacts | CONTEXT.md: {context.get('context_artifact_created', 0)}; handoff: {context.get('handoff_created', 0)}; решения: {context.get('decision_recorded', 0)}; resume: {context.get('resume_after_handoff', 0)} |",
             f"| Replanning / вмешательства пользователя | не наблюдаются в текущей metadata-схеме |",
             f"| События ассистента на пользовательский ход | {aept_str} |",
             f"| Всего событий ассистента | {tool.get('total_assistant_events', 0)} |",
