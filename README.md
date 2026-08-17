@@ -95,6 +95,8 @@ first-prompt breakdown: goal 2/19, scope 1/19, readiness 0/19, context/files 9/1
 
 All command text, tool output, file paths, and artifact contents are discarded after local classification.
 
+The comparison workflow is intentionally separate from `review.py`: generate two reports first, then compare the aggregate JSON files.
+
 ## Examples
 
 Analyse only Claude Code CLI history for last 3 days:
@@ -153,7 +155,11 @@ All user-facing text in reports is in Russian.
 Compare two already-generated aggregate reports without rereading session history:
 
 ```bash
-python skill/pra/scripts/compare.py   --baseline ./reports/baseline.json   --follow-up ./reports/follow-up.json   --intervention "Require a test command"   --output-dir ./comparisons
+python skill/pra/scripts/compare.py \
+  --baseline ./reports/baseline.json \
+  --follow-up ./reports/follow-up.json \
+  --intervention "Require a test command" \
+  --output-dir ./comparisons
 ```
 
 The comparison reports sample sizes, absolute deltas, percentage-point changes for verification/correction/turn metrics, and a non-causal interpretation warning. It accepts only PRA aggregate JSON reports and does not store or transmit raw session content.
