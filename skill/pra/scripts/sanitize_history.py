@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Iterable, TextIO
 
 from verification import detect_verification, parse_exit_code
+from context_artifacts import detect_context_action, detect_decision_signal
 
 SCHEMA_VERSION = 1
 BLOCKED_KEYS = {
@@ -410,6 +411,7 @@ def scan_hermes_database(
     session_projects: dict[str, str] = {}
     emitted: list[dict[str, Any]] = []
     pending_verifications: dict[str, dict[str, Any]] = {}
+    pending_context: dict[str, dict[str, Any]] = {}
     try:
         connection = sqlite3.connect(f"file:{source.as_posix()}?mode=ro", uri=True)
     except sqlite3.Error:
@@ -437,14 +439,30 @@ def scan_hermes_database(
             event_seed = f"{source_label}:{message_id}:{timestamp.isoformat()}"
             normalized_role = str(role or "").lower()
             if normalized_role in {"assistant", "tool"}:
-                if normalized_role == "tool" and tool_call_id in pending_verifications:
-                    exit_code = parse_exit_code(content)
-                    if exit_code is not None:
-                        pending_verifications[tool_call_id]["verification_status"] = (
-                            "passed" if exit_code == 0 else "failed"
+                if normalized_role == "tool":
+                    if tool_call_id in pending_verifications:
+                        exit_code = parse_exit_code(content)
+                        if exit_code is not None:
+                            pending_verifications[tool_call_id]["verification_status"] = (
+                                "passed" if exit_code == 0 else "failed"
+                            )
+                    if tool_call_id in pending_context:
+                        result = content
+                        if isinstance(result, str):
+                            try:
+                                result = json.loads(result)
+                            except (json.JSONDecodeError, TypeError):
+                                result = {}
+                        success = (isinstance(result, dict) and result.get("success") is True) or (
+                            isinstance(result, dict) and result.get("exit_code") == 0
                         )
+                        if success:
+                            event_ref = pending_context.pop(tool_call_id)
+                            event_ref.update(event_ref.pop("_context_pending", {}))
                 verification_categories: list[str] = []
                 call_ids: list[str] = []
+                context_call_ids: list[str] = []
+                context_flags: dict[str, bool] = {}
                 if normalized_role == "assistant" and tool_calls:
                     try:
                         calls = json.loads(tool_calls)
@@ -457,7 +475,11 @@ def scan_hermes_database(
                             function = call.get("function") if isinstance(call.get("function"), dict) else {}
                             categories = detect_verification(function.get("name"), function.get("arguments"))
                             verification_categories.extend(categories)
+                            detected_context = detect_context_action(function.get("name"), function.get("arguments"))
+                            context_flags.update(detected_context)
                             call_id = call.get("call_id") or call.get("id")
+                            if call_id and detected_context:
+                                context_call_ids.append(str(call_id))
                             if call_id and categories:
                                 call_ids.append(str(call_id))
                 event = {
@@ -476,6 +498,10 @@ def scan_hermes_database(
                     event["verification_status"] = None
                     for call_id in call_ids:
                         pending_verifications[call_id] = event
+                if context_flags:
+                    event["_context_pending"] = context_flags
+                    for call_id in context_call_ids:
+                        pending_context[call_id] = event
                 emitted.append(event)
                 stats.assistant_events += 1
                 continue
@@ -506,11 +532,22 @@ def scan_hermes_database(
                 "signals": signals,
                 "evidence": {"mode": "metadata", "provider": "hermes", "summary": evidence_summary},
             }
+            if detect_decision_signal(cleaned_text):
+                event["decision_recorded"] = True
             emitted.append(event)
             stats.events += 1
     finally:
         connection.close()
-    for event in sorted(emitted, key=lambda item: (str(item["timestamp"]), str(item["event_id"]))):
+    ordered = sorted(emitted, key=lambda item: (str(item["timestamp"]), str(item["event_id"])))
+    handoff_seen: set[str] = set()
+    for event in ordered:
+        session = str(event.get("session") or "unknown")
+        if event.get("handoff_created"):
+            handoff_seen.add(session)
+        elif event.get("role") == "user" and session in handoff_seen:
+            event["resume_after_handoff"] = True
+            handoff_seen.remove(session)
+        event.pop("_context_pending", None)
         output.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
     return stats
 

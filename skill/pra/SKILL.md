@@ -13,6 +13,8 @@ For Hermes, sanitized events are grouped into logical turns: one user event plus
 
 For Hermes terminal tool calls, PRA locally classifies verification intent into `test`, `lint`, `typecheck`, `build`, `diff`, and `review`, then links the call to its tool result exit code. Reports distinguish attempted, passed, failed, and unknown checks without persisting commands or output.
 
+PRA also emits metadata-only context-curator signals: `context_artifact_created`, `handoff_created`, `decision_recorded`, and `resume_after_handoff`. It detects artifact names and write operations transiently, but never stores file contents or paths.
+
 ## Safety boundary
 
 - Automatic use is allowed only at a meaningful checkpoint, after a long multi-session task, or during a weekly review; never on every turn.
