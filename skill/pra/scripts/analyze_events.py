@@ -11,6 +11,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
 
+from logical_turns import build_logical_turns, summarize_logical_turns
+
 REPORT_SCHEMA_VERSION = 4
 SCOPE_KEYS = ("provider", "source_mode", "period_duration_seconds")
 
@@ -415,7 +417,9 @@ def build_report_state(
     }
 
     # ── Behaviour metrics ────────────────────────────────────────────
+    logical_turn_summary = summarize_logical_turns(build_logical_turns(events))
     behaviour: dict[str, Any] = {
+        "logical_turns": logical_turn_summary,
         "assistant_events_per_user_turn": _compute_assistant_events_per_user_turn(events),
         "time_distribution": _compute_time_distribution(events),
         "tool_ratio": _compute_tool_ratio(events),
@@ -524,6 +528,7 @@ def render_markdown(state: dict[str, Any]) -> str:
         "",
     ]
     behaviour = state.get("behaviour", {})
+    logical = behaviour.get("logical_turns", {})
     aept = behaviour.get("assistant_events_per_user_turn", {})
     tool = behaviour.get("tool_ratio", {})
     time_dist = behaviour.get("time_distribution", {})
@@ -592,6 +597,11 @@ def render_markdown(state: dict[str, Any]) -> str:
         [
             "| Метрика | Значение |",
             "|---|---:|",
+            f"| Логические turns | {logical.get('count', 0)} (завершено: {logical.get('completed_count', 0)}, незавершено: {logical.get('incomplete_count', 0)}) |",
+            f"| Среднее время logical turn | {logical.get('duration_seconds_mean', '—')} с; медиана {logical.get('duration_seconds_median', '—')} с |",
+            f"| Tool calls на logical turn | {logical.get('tool_calls_total', 0)} всего; {logical.get('tool_calls_mean', 0)} в среднем |",
+            f"| Verification mentions в logical turns | {logical.get('verification_mention_count', 0)} ({logical.get('verification_mention_rate', 0)}%) |",
+            f"| Replanning / вмешательства пользователя | не наблюдаются в текущей metadata-схеме |",
             f"| События ассистента на пользовательский ход | {aept_str} |",
             f"| Всего событий ассистента | {tool.get('total_assistant_events', 0)} |",
             f"| Вызовы инструментов | {tool_str} |",
