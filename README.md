@@ -26,7 +26,7 @@ The environment variables `CODEX_HOME` and `CLAUDE_HOME` replace the default pat
 
 No external services, no telemetry, no network access during analysis. See [`references/privacy-model.md`](skill/pra/references/privacy-model.md) for the detailed privacy contract.
 
-For Hermes reports, assistant/tool events are additionally grouped into logical turns. The report shows turn completion, duration, tool-call counts, metadata-only verification outcomes, and context-curator artifact signals without persisting message text, commands, paths, or output.
+For Hermes reports, assistant/tool events are additionally grouped into logical turns. The report shows turn completion, duration, metadata-only verification outcomes, context-curator artifact signals, and a five-aspect first-prompt breakdown without persisting message text, commands, paths, or output.
 
 ## Prerequisites
 

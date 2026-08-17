@@ -15,6 +15,8 @@ For Hermes terminal tool calls, PRA locally classifies verification intent into 
 
 PRA also emits metadata-only context-curator signals: `context_artifact_created`, `handoff_created`, `decision_recorded`, and `resume_after_handoff`. It detects artifact names and write operations transiently, but never stores file contents or paths.
 
+For first prompts, the report breaks structure into five explicit aspects: goal, scope, readiness criterion, context/files, and constraints. It keeps the legacy 0–10 score for compatibility and adds counts per aspect.
+
 ## Safety boundary
 
 - Automatic use is allowed only at a meaningful checkpoint, after a long multi-session task, or during a weekly review; never on every turn.
