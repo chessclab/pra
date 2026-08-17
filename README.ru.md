@@ -146,6 +146,16 @@ python skill/pra/scripts/review.py --provider all --days 7 --output-dir ./my-rep
 | Индекс структуры первого промпта (0–10) | 6.7 из 10 (выборка: 4 сессий) |
 ```
 
+## Baseline → intervention → follow-up
+
+Сравнить два уже созданных агрегированных отчёта, не перечитывая историю сессий:
+
+```bash
+python skill/pra/scripts/compare.py   --baseline ./reports/baseline.json   --follow-up ./reports/follow-up.json   --intervention "Требовать запуск тестов"   --output-dir ./comparisons
+```
+
+Сравнение показывает размеры выборок, абсолютные изменения и разницу в процентных пунктах для проверок, исправлений и logical turns. В отчёте явно указано, что это наблюдаемая связь, а не доказанная причинность. Принимаются только агрегированные JSON-отчёты PRA; сырые данные не сохраняются и не передаются.
+
 ## Тестирование
 
 ```bash

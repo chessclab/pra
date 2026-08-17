@@ -17,6 +17,8 @@ PRA also emits metadata-only context-curator signals: `context_artifact_created`
 
 For first prompts, the report breaks structure into five explicit aspects: goal, scope, readiness criterion, context/files, and constraints. It keeps the legacy 0–10 score for compatibility and adds counts per aspect.
 
+Use `scripts/compare.py` to compare two aggregate reports as a baseline/intervention/follow-up experiment. The output includes sample sizes, absolute deltas, percentage-point changes, and an explicit non-causal interpretation warning.
+
 ## Safety boundary
 
 - Automatic use is allowed only at a meaningful checkpoint, after a long multi-session task, or during a weekly review; never on every turn.
