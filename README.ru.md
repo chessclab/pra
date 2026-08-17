@@ -95,6 +95,8 @@ context artifacts: CONTEXT.md 1, handoff 0, decisions 2, resume 0
 
 После локальной классификации текст команд, вывод инструментов, пути и содержимое артефактов удаляются.
 
+Сравнение запускается отдельно от `review.py`: сначала создаются два отчёта, затем сравниваются их агрегированные JSON-файлы.
+
 ## Примеры
 
 Проанализировать только Claude Code CLI за последние 3 дня:
@@ -151,7 +153,11 @@ python skill/pra/scripts/review.py --provider all --days 7 --output-dir ./my-rep
 Сравнить два уже созданных агрегированных отчёта, не перечитывая историю сессий:
 
 ```bash
-python skill/pra/scripts/compare.py   --baseline ./reports/baseline.json   --follow-up ./reports/follow-up.json   --intervention "Требовать запуск тестов"   --output-dir ./comparisons
+python skill/pra/scripts/compare.py \
+  --baseline ./reports/baseline.json \
+  --follow-up ./reports/follow-up.json \
+  --intervention "Требовать запуск тестов" \
+  --output-dir ./comparisons
 ```
 
 Сравнение показывает размеры выборок, абсолютные изменения и разницу в процентных пунктах для проверок, исправлений и logical turns. В отчёте явно указано, что это наблюдаемая связь, а не доказанная причинность. Принимаются только агрегированные JSON-отчёты PRA; сырые данные не сохраняются и не передаются.
