@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, TextIO
 
+from verification import detect_verification, parse_exit_code
+
 SCHEMA_VERSION = 1
 BLOCKED_KEYS = {
     "pastedcontents",
@@ -401,11 +403,13 @@ def scan_hermes_database(
     output: TextIO,
     salt: bytes,
 ) -> ScanStats:
-    """Read Hermes state.db and emit only anonymous metadata events."""
+    """Read Hermes state.db and emit anonymous metadata events only."""
     stats = ScanStats(files=1)
     source_label = private_label("source", str(source), salt)
     stats.source_labels.append(source_label)
     session_projects: dict[str, str] = {}
+    emitted: list[dict[str, Any]] = []
+    pending_verifications: dict[str, dict[str, Any]] = {}
     try:
         connection = sqlite3.connect(f"file:{source.as_posix()}?mode=ro", uri=True)
     except sqlite3.Error:
@@ -415,10 +419,10 @@ def scan_hermes_database(
             if session_id and cwd:
                 session_projects[str(session_id)] = private_label("project", str(cwd), salt)
         rows = connection.execute(
-            "SELECT id, session_id, role, content, tool_calls, timestamp, display_kind "
+            "SELECT id, session_id, role, content, tool_calls, tool_call_id, tool_name, timestamp, display_kind "
             "FROM messages ORDER BY timestamp, id"
         )
-        for message_id, raw_session, role, content, tool_calls, raw_timestamp, display_kind in rows:
+        for message_id, raw_session, role, content, tool_calls, tool_call_id, tool_name, raw_timestamp, display_kind in rows:
             stats.lines += 1
             timestamp = parse_timestamp(raw_timestamp)
             if timestamp is None:
@@ -431,7 +435,31 @@ def scan_hermes_database(
             session_hint = private_label("session", session_value, salt)
             kind = str(display_kind or role or "unknown")
             event_seed = f"{source_label}:{message_id}:{timestamp.isoformat()}"
-            if str(role or "").lower() in {"assistant", "tool"}:
+            normalized_role = str(role or "").lower()
+            if normalized_role in {"assistant", "tool"}:
+                if normalized_role == "tool" and tool_call_id in pending_verifications:
+                    exit_code = parse_exit_code(content)
+                    if exit_code is not None:
+                        pending_verifications[tool_call_id]["verification_status"] = (
+                            "passed" if exit_code == 0 else "failed"
+                        )
+                verification_categories: list[str] = []
+                call_ids: list[str] = []
+                if normalized_role == "assistant" and tool_calls:
+                    try:
+                        calls = json.loads(tool_calls)
+                    except (json.JSONDecodeError, TypeError):
+                        calls = []
+                    if isinstance(calls, list):
+                        for call in calls:
+                            if not isinstance(call, dict):
+                                continue
+                            function = call.get("function") if isinstance(call.get("function"), dict) else {}
+                            categories = detect_verification(function.get("name"), function.get("arguments"))
+                            verification_categories.extend(categories)
+                            call_id = call.get("call_id") or call.get("id")
+                            if call_id and categories:
+                                call_ids.append(str(call_id))
                 event = {
                     "schema_version": SCHEMA_VERSION,
                     "event_id": private_label("event", event_seed, salt),
@@ -439,18 +467,23 @@ def scan_hermes_database(
                     "session": session_hint,
                     "role": "assistant",
                     "kind": kind,
-                    "has_tool_calls": bool(tool_calls) or str(role).lower() == "tool",
+                    "has_tool_calls": bool(tool_calls) or normalized_role == "tool",
                     "tool_content_available": bool(content) or bool(tool_calls),
                     "evidence": {"mode": "metadata", "provider": "hermes"},
                 }
-                output.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+                if verification_categories:
+                    event["verification_categories"] = sorted(set(verification_categories))
+                    event["verification_status"] = None
+                    for call_id in call_ids:
+                        pending_verifications[call_id] = event
+                emitted.append(event)
                 stats.assistant_events += 1
                 continue
-            if str(role or "").lower() != "user":
+            if normalized_role != "user":
                 stats.skipped_non_user += 1
                 continue
             text_parts = _hermes_text(content)
-            raw_text = "\n".join(part for part in text_parts if part)
+            raw_text = "\\n".join(part for part in text_parts if part)
             if not raw_text:
                 continue
             cleaned_text, cleaning_redactions = sanitize_for_metrics(raw_text)
@@ -473,12 +506,13 @@ def scan_hermes_database(
                 "signals": signals,
                 "evidence": {"mode": "metadata", "provider": "hermes", "summary": evidence_summary},
             }
-            output.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+            emitted.append(event)
             stats.events += 1
     finally:
         connection.close()
+    for event in sorted(emitted, key=lambda item: (str(item["timestamp"]), str(item["event_id"]))):
+        output.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
     return stats
-
 
 def _provider_root(provider_key: str) -> Path | None:
     """Resolve the root directory for a provider.

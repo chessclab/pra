@@ -11,6 +11,8 @@ The tool retains only timestamp, anonymous session id, role, kind, boolean has_t
 
 For Hermes, sanitized events are grouped into logical turns: one user event plus following assistant/tool metadata until the next user event. Reports include turn count, completion rate, duration, tool calls, and verification mentions. Replanning and user intervention remain explicitly unobserved until the source metadata can support them.
 
+For Hermes terminal tool calls, PRA locally classifies verification intent into `test`, `lint`, `typecheck`, `build`, `diff`, and `review`, then links the call to its tool result exit code. Reports distinguish attempted, passed, failed, and unknown checks without persisting commands or output.
+
 ## Safety boundary
 
 - Automatic use is allowed only at a meaningful checkpoint, after a long multi-session task, or during a weekly review; never on every turn.
