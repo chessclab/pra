@@ -9,6 +9,8 @@ Generate a local, evidence-backed review from sanitized metadata. Keep raw histo
 
 The tool retains only timestamp, anonymous session id, role, kind, boolean has_tool_calls, and aggregate metrics. Assistant text, thinking, tool name, tool input, tool output, and user text are never saved to the report or model context.
 
+For Hermes, sanitized events are grouped into logical turns: one user event plus following assistant/tool metadata until the next user event. Reports include turn count, completion rate, duration, tool calls, and verification mentions. Replanning and user intervention remain explicitly unobserved until the source metadata can support them.
+
 ## Safety boundary
 
 - Automatic use is allowed only at a meaningful checkpoint, after a long multi-session task, or during a weekly review; never on every turn.
