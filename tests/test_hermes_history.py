@@ -19,7 +19,8 @@ class HermesHistoryTests(unittest.TestCase):
                 CREATE TABLE sessions (id TEXT, cwd TEXT);
                 CREATE TABLE messages (
                     id INTEGER, session_id TEXT, role TEXT, content TEXT,
-                    tool_calls TEXT, timestamp REAL, display_kind TEXT
+                    tool_calls TEXT, tool_call_id TEXT, tool_name TEXT,
+                    timestamp REAL, display_kind TEXT
                 );
                 """
             )
@@ -27,11 +28,11 @@ class HermesHistoryTests(unittest.TestCase):
             stamp = now.timestamp()
             connection.execute("INSERT INTO sessions VALUES (?, ?)", ("s1", "C:\\private\\project"))
             connection.executemany(
-                "INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [
-                    (1, "s1", "user", "add feature and run tests", None, stamp, "user"),
-                    (2, "s1", "assistant", "PRIVATE_ASSISTANT_TEXT", "[{\"name\":\"tool\"}]", stamp + 1, None),
-                    (3, "s1", "tool", "PRIVATE_TOOL_OUTPUT", None, stamp + 2, None),
+                    (1, "s1", "user", "add feature and run tests", None, None, None, stamp, "user"),
+                    (2, "s1", "assistant", "PRIVATE_ASSISTANT_TEXT", "[{\"name\":\"tool\"}]", None, None, stamp + 1, None),
+                    (3, "s1", "tool", "PRIVATE_TOOL_OUTPUT", None, None, "terminal", stamp + 2, None),
                 ],
             )
             connection.commit()
