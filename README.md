@@ -148,6 +148,16 @@ python skill/pra/scripts/review.py --provider all --days 7 --output-dir ./my-rep
 
 All user-facing text in reports is in Russian.
 
+## Baseline → intervention → follow-up
+
+Compare two already-generated aggregate reports without rereading session history:
+
+```bash
+python skill/pra/scripts/compare.py   --baseline ./reports/baseline.json   --follow-up ./reports/follow-up.json   --intervention "Require a test command"   --output-dir ./comparisons
+```
+
+The comparison reports sample sizes, absolute deltas, percentage-point changes for verification/correction/turn metrics, and a non-causal interpretation warning. It accepts only PRA aggregate JSON reports and does not store or transmit raw session content.
+
 ## Testing
 
 ```bash
