@@ -80,6 +80,8 @@ SUCCESS_RE = re.compile(
 VERIFY_RE = re.compile(r"(?i)(?:\btest|verify|check|lint|build\b|тест|проверь|провер|сборк|линт)")
 CONSTRAINT_RE = re.compile(r"(?i)(?:\bmust\b|\bwithout\b|\bonly\b|\bdo not\b|нужно|нельзя|только|без |не (?:делай|меняй|используй))")
 GOAL_RE = re.compile(r"(?i)(?:\bfix\b|\badd\b|\bcreate\b|\bimplement\b|\bupdate\b|\bremove\b|исправ|добав|созда|реализ|обнов|удал)")
+SCOPE_RE = re.compile(r"(?i)(?:\bscope\b|\bwithin\b|\bonly change\b|\blimit(?:ed)? to\b|границ|объём|только в|не меняй)")
+READINESS_RE = re.compile(r"(?i)(?:\bacceptance criteria\b|\bdefinition of done\b|\bdone when\b|\bexpected result\b|\bready when\b|критерий готов|готово когда|ожидаемый результат)")
 FILE_HINT_RE = re.compile(r"(?:[A-Za-z]:\\|/[^\s]+/|\b[\w.-]+\.(?:py|js|ts|tsx|rs|go|java|md|json|ya?ml)\b)")
 
 
@@ -302,6 +304,8 @@ def derive_metrics(text: str, dropped_fields: int, text_parts: int = 1) -> tuple
         ("verification", VERIFY_RE),
         ("constraint", CONSTRAINT_RE),
         ("goal", GOAL_RE),
+        ("scope", SCOPE_RE),
+        ("readiness", READINESS_RE),
     ):
         if pattern.search(compact):
             signals.append(name)
@@ -322,6 +326,8 @@ def derive_metrics(text: str, dropped_fields: int, text_parts: int = 1) -> tuple
         "has_constraint": "constraint" in signals,
         "has_verification": "verification" in signals,
         "has_file_context": had_file_hint,
+        "has_scope": "scope" in signals,
+        "has_readiness": "readiness" in signals,
     }
     summary_bits = [
         f"length={metrics['characters_bucket']}",

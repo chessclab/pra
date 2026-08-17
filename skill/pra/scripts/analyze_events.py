@@ -344,7 +344,7 @@ def _compute_recovery_time(events: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _compute_initial_prompt_structure(events: list[dict[str, Any]]) -> dict[str, Any]:
-    """Score the first user event of each session for goal, constraint, verification."""
+    """Score first prompts and expose a practical five-aspect breakdown."""
     user_events = [e for e in events if e.get("role", "user") == "user"]
     session_events: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for event in user_events:
@@ -352,28 +352,37 @@ def _compute_initial_prompt_structure(events: list[dict[str, Any]]) -> dict[str,
     for evts in session_events.values():
         evts.sort(key=lambda e: str(e.get("timestamp", "")))
 
-    aspect_names = ("goal", "constraint", "verification")
-    scores: list[int] = []
-    for evts in session_events.values():
-        if not evts:
-            continue
-        first = evts[0]
-        signals = first.get("signals", [])
-        total = sum(1 for a in aspect_names if a in signals)
-        scores.append(total)
-
-    sample_size = len(scores)
+    first_events = [evts[0] for evts in session_events.values() if evts]
+    legacy_aspects = ("goal", "constraint", "verification")
+    practical_aspects = ("goal", "scope", "readiness", "context", "constraint")
+    scores = [sum(1 for aspect in legacy_aspects if aspect in first.get("signals", [])) for first in first_events]
+    counts = {
+        aspect: sum(
+            1 for first in first_events
+            if (aspect == "context" and ("file-context" in first.get("signals", []) or first.get("metrics", {}).get("has_file_context")))
+            or (aspect != "context" and aspect in first.get("signals", []))
+        )
+        for aspect in practical_aspects
+    }
+    sample_size = len(first_events)
     if sample_size == 0:
-        return {"mean_score": 0.0, "max_possible": 10, "sample_size": 0, "high_quality_count": 0, "high_quality_ratio": 0.0}
+        return {
+            "mean_score": 0.0, "max_possible": 10, "sample_size": 0,
+            "high_quality_count": 0, "high_quality_ratio": 0.0,
+            "aspect_counts": {aspect: 0 for aspect in practical_aspects},
+            "aspect_rates": {aspect: 0.0 for aspect in practical_aspects},
+        }
 
     mean_raw = statistics.mean(scores)
-    high_count = sum(1 for s in scores if s >= 2)
+    high_count = sum(1 for score in scores if score >= 2)
     return {
         "mean_score": round(mean_raw * 10 / 3, 1),
         "max_possible": 10,
         "sample_size": sample_size,
         "high_quality_count": high_count,
         "high_quality_ratio": round(high_count / sample_size * 100, 1),
+        "aspect_counts": counts,
+        "aspect_rates": {aspect: round(count / sample_size * 100, 1) for aspect, count in counts.items()},
     }
 
 
@@ -462,10 +471,10 @@ def build_report_state(
     ips = behaviour.get("initial_prompt_structure", {})
     if ips.get("sample_size", 0) >= 10 and ips.get("mean_score", 10) < 5:
         recommendations.append({
-            "title": "Добавлять цель, ограничения и проверку в первый запрос новой задачи",
+            "title": "Добавлять структуру в первый запрос новой задачи",
             "reason": f"Индекс структуры первого промпта: {ips['mean_score']} из {ips['max_possible']} (выборка: {ips['sample_size']} сессий). "
-                      f"Только {ips['high_quality_ratio']}% первых запросов содержат минимум два элемента из трёх (цель, ограничение, проверка).",
-            "action": "При начале новой задачи явно указывать: что сделать, в каких границах, как проверить. "
+                      f"Разбор по пяти аспектам: цель, границы, критерий готовности, контекст/файлы и ограничения.",
+            "action": "При начале новой задачи явно указывать: что сделать, в каких границах, как проверить готовность, какой контекст использовать и какие есть ограничения. "
                       "Короткие уточнения и follow-up сообщения не требуют полной структуры.",
             "evidence": _event_refs(user_events, limit=3),
         })
@@ -595,11 +604,20 @@ def render_markdown(state: dict[str, Any]) -> str:
 
     ips = behaviour.get("initial_prompt_structure", {})
     ips_str = "—"
+    ips_breakdown = "—"
     if ips.get("sample_size", 0) > 0:
         ips_str = (
             f"{ips['mean_score']} из {ips['max_possible']} "
             f"(выборка: {ips['sample_size']} сессий, "
             f"{ips['high_quality_ratio']}% с ≥2 элементами)"
+        )
+        counts = ips.get("aspect_counts", {})
+        ips_breakdown = "; ".join(
+            f"{label}: {counts.get(key, 0)}/{ips['sample_size']}"
+            for key, label in (
+                ("goal", "цель"), ("scope", "границы"), ("readiness", "критерий готовности"),
+                ("context", "контекст/файлы"), ("constraint", "ограничения"),
+            )
         )
 
     lines.extend(
@@ -624,6 +642,7 @@ def render_markdown(state: dict[str, Any]) -> str:
             f"| Коррекция → успех | {chains_str} |",
             f"| Шаги до успеха после коррекции | {rcv_str} |",
             f"| Индекс структуры первого промпта (0–10) | {ips_str} |",
+            f"| Разбор первого промпта | {ips_breakdown} |",
             "",
             "## Диагностика источников",
         ],
